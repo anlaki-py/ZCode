@@ -80,3 +80,10 @@
 - `info` 用于进程和会话生命周期、权限结果、一次性初始化等生产可用事件。
 - `warn` 用于可恢复异常；`error` 用于崩溃、握手失败、鉴权丢失等不可恢复错误。
 - 不在日志、示例或提交中写入凭据、真实用户数据和内部服务地址。
+
+## Termux 环境说明
+
+- 本机跑在 Termux proot 里：硬链接创建被拒绝（EACCES），glibc 二进制必须经 bionilux 启动。`pnpm`/`node`/`python` 统一走 `/home/bin` 下的 launcher，不要直接调用 ELF，也不要改动 launcher 里的工具链变量。
+- pnpm 自带的版本切换在这里不可用：它下载的 bare glibc ELF 无法直接执行。`pnpm` launcher 会按各项目的 `packageManager` pin 本地分发（本仓库 pin 10.33.2，走 `/home/opt/pnpm-10.33.2-linux-arm64`），`.bashrc` 中的 `PNPM_CONFIG_MANAGE_PACKAGE_MANAGER_VERSIONS=false` 兜底关闭自切换。不要删除这两处。
+- 安装在这里强制 `isolated` 加 store copy（launcher 内默认，显式配置仍可覆盖）。不要在本机切回 hoisted：pnpm 10 的 hoist 链接失败只在 EXDEV/ENOENT 时回退拷贝，EACCES 会直接中断安装。
+- Web 灰屏（logo 后无内容、控制台 `Invalid hook call` 来自 lucide-react）通常是根目录 `node_modules/react`、`react-dom` 变回了物理拷贝目录，与 store 副本形成双 React 实例。任何一次 `pnpm install` 都可能悄悄恢复它们。修复：确认二者为指向 `.pnpm` 内同版本 store 目录的软链，否则删目录重建软链，删除 `packages/web/node_modules/.vite`，重启 dev server 后硬刷新浏览器缓存。
